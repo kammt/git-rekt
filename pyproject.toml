@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "git-rekt"
+version = "0.1.0"
+description = "A joke CLI that gleefully and irreversibly destroys a local git repository. Here be dragons."
+readme = "README.md"
+requires-python = ">=3.8"
+license = { file = "LICENSE" }
+authors = [{ name = "git-rekt" }]
+keywords = ["git", "joke", "prank", "destroy", "chaos"]
+classifiers = [
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Topic :: Software Development :: Version Control :: Git",
+]
+
+[project.scripts]
+# This is the magic: installing the package puts an executable named
+# `git-rekt` on PATH. Git treats any `git-<name>` on PATH as the
+# subcommand `git <name>`, so `git rekt` Just Works on Linux, macOS and
+# Windows (pip/pipx generate a `git-rekt.exe` shim on Windows).
+git-rekt = "git_rekt.cli:main"
+
+[tool.setuptools]
+packages = ["git_rekt"]
