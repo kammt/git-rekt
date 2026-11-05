@@ -1,8 +1,9 @@
 # git-rekt
 
-A new git subcommand, `git rekt`, that **irreversibly destroys the local git
-repository you run it in**. For laughs, for pranks on your own machines, for
-that one repo you swore you'd never look at again.
+A new git subcommand, `git rekt`, that **irreversibly destroys the git
+repository you run it in — and force-wipes the history off any remotes it
+tracks**. For laughs, for pranks on your own machines, for that one repo you
+swore you'd never look at again.
 
 > ⚠️ **This is a joke tool that does real, permanent damage.** There is no undo.
 > It nukes the reflog, overwrites the object store with random bytes, and then
@@ -11,9 +12,9 @@ that one repo you swore you'd never look at again.
 > this repo tracks** — so the destruction is not even confined to your machine.
 > Point it only at repositories (and remotes) you are happy to lose.
 
-It does **not** phone home and is loud about everything it does. Apart from the
-force-push over its own tracked remotes, it only affects the repo in the
-current directory, and it asks for explicit confirmation first.
+It is loud about everything it does. Apart from the force-push over its own
+tracked remotes, it only affects the repo in the current directory, and it asks
+for explicit confirmation first.
 
 ## What it does
 
