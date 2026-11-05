@@ -79,6 +79,39 @@ git rekt [-y|--yes] [-n|--dry-run]
 By default you must answer `y` **and** type the repository's directory name to
 proceed. `--yes` bypasses both — use with care.
 
+## Pro tip: learn to spell
+
+Tired of `git: 'puhs' is not a git command. Did you mean this?`? Has git's gentle
+little suggestion failed to make you a better typist? Try some aversion therapy
+instead: alias your favourite typos to `git rekt -y`. Nothing builds muscle
+memory like losing an entire repository (and its remote) to a single
+transposed letter. You'll be spelling `commit` perfectly in no time.
+
+```sh
+# "I'll just quickly push this"
+git config --global alias.puhs   'rekt -y'
+git config --global alias.psuh   'rekt -y'
+git config --global alias.pish   'rekt -y'
+# "I'll just quickly commit this"
+git config --global alias.commti 'rekt -y'
+git config --global alias.comit  'rekt -y'
+git config --global alias.comimt 'rekt -y'
+git config --global alias.ocmmit 'rekt -y'
+# "I'll just quickly check what's going on"
+git config --global alias.stauts 'rekt -y'
+git config --global alias.statsu 'rekt -y'
+git config --global alias.chekcout 'rekt -y'
+git config --global alias.pul    'rekt -y'
+git config --global alias.fetchh 'rekt -y'
+```
+
+Now every typo is a learning opportunity, in the sense that you will learn to
+regret it. (`-y` skips the confirmation prompts — a safety net would only
+undermine the lesson.)
+
+Changed your mind, or just want to keep your job? `git config --global --unset alias.puhs`
+(and so on) will undo it, which is more than can be said for the alternative.
+
 ## Requirements
 
 - Python 3.8+
