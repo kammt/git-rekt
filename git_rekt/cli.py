@@ -305,27 +305,12 @@ def main(argv=None):
         "-n", "--dry-run", action="store_true",
         help="show what would happen without destroying anything",
     )
-    parser.add_argument(
-        "--only", metavar="STEP", action="append", choices=[k for k, _, _ in CHAOS],
-        help="run only this chaos step (repeatable); default runs all of them",
-    )
-    parser.add_argument(
-        "--list", action="store_true", help="list the available chaos steps and exit",
-    )
     args = parser.parse_args(argv)
-
-    if args.list:
-        print("Chaos steps (default: all, in order):")
-        for key, desc, _ in CHAOS:
-            print(f"  {key:10s} {desc}")
-        return 0
 
     toplevel, gitdir, bare = find_repo(os.getcwd())
     if not gitdir:
         print(red("fatal: not a git repository. Nothing to rekt."), file=sys.stderr)
         return 128
-
-    steps = [step for step in CHAOS if (not args.only or step[0] in args.only)]
 
     if args.dry_run:
         print(yellow("DRY RUN -- no repository will be harmed.\n"))
@@ -333,7 +318,7 @@ def main(argv=None):
         if bare:
             print(dim("(bare repository)"))
         print("\nWould perform:")
-        for key, desc, _ in steps:
+        for key, desc, _ in CHAOS:
             print(f"  [{key}] {desc}")
         return 0
 
@@ -343,7 +328,7 @@ def main(argv=None):
 
     print()
     print(red(">>> getting rekt <<<"))
-    for key, desc, fn in steps:
+    for key, desc, fn in CHAOS:
         print(yellow(f"  [{key}] {desc}"))
         try:
             fn(os.getcwd(), gitdir)

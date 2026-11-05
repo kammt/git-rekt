@@ -15,7 +15,7 @@ it asks for explicit confirmation first.
 
 ## What it does
 
-Run in order (all by default), each step best-effort:
+Every step always runs, in this order, each one best-effort:
 
 | step       | effect |
 |------------|--------|
@@ -55,7 +55,6 @@ pip install --user .
 Then, from inside any repo:
 
 ```sh
-git rekt --list      # show the chaos steps, change nothing
 git rekt --dry-run   # show what would happen, change nothing
 git rekt             # ask for confirmation, then destroy
 ```
@@ -65,11 +64,9 @@ No install needed to try it safely: `python3 -m git_rekt --dry-run`.
 ## Usage
 
 ```
-git rekt [-y|--yes] [-n|--dry-run] [--only STEP ...] [--list]
+git rekt [-y|--yes] [-n|--dry-run]
 
   -n, --dry-run   show what would happen; harm nothing
-  --only STEP     run only this step (repeatable); default runs all
-  --list          list the chaos steps and exit
   -y, --yes       skip both confirmation prompts (for the brave / scripts)
 ```
 
