@@ -5,10 +5,11 @@ A deliberately destructive joke tool. It takes the git repository you run it
 in and turns it into modern art: scrambled history, looping refs, corrupted
 objects. When it is done, `git` just fails. There is no undo.
 
-Everything here operates ONLY on the repository in the current directory, is
-loud about what it is doing, and asks for explicit confirmation first. It does
-not touch remotes, does not phone home, and does not try to hide. It is a prank
-you point at your own foot.
+Everything here operates on the repository in the current directory (and, as
+its opening act, force-pushes an empty history over any remote branches that
+repository is configured to track). It is loud about what it is doing, asks
+for explicit confirmation first, and does not phone home or try to hide. It is
+a prank you point at your own foot.
 
 Cross-platform: pure Python + the `git` binary. Works on Linux, macOS, Windows.
 """
@@ -106,6 +107,64 @@ def random_message():
 # chaos modules -- each is best-effort and swallows its own errors so the
 # carnage always continues to the finale.
 # ---------------------------------------------------------------------------
+
+def wipe_remotes(cwd, gitdir):
+    """Opening act: force-push an empty history over every tracked remote.
+
+    For each local branch that has a configured upstream, build a parentless
+    commit pointing at the empty tree and force-push it onto the remote
+    branch. Every commit that lived on that remote branch is removed -- the
+    branch survives, holding a single empty commit and nothing else.
+
+    Best-effort: branches without an upstream are skipped, and any push that
+    fails (no network, no write access, protected branch) is noted and the
+    carnage moves on.
+    """
+    fmt = "%(refname:short)\t%(upstream:remotename)\t%(upstream:short)"
+    listing = git_text(["for-each-ref", "--format=" + fmt, "refs/heads"], cwd)
+    if not listing:
+        print(dim("    (no local branches)"))
+        return 0
+
+    # the canonical empty tree; written so commit-tree can reference it
+    empty_tree = git(["mktree"], cwd, input_bytes=b"").stdout.decode().strip()
+    if not empty_tree:
+        print(red("    could not create empty tree; skipping remote wipe"))
+        return 0
+
+    pushed = 0
+    seen_remote = False
+    for line in listing.split("\n"):
+        parts = line.split("\t")
+        if len(parts) != 3:
+            continue
+        branch, remote, upstream = (p.strip() for p in parts)
+        if not remote or not upstream:
+            continue  # this branch tracks no remote -- leave it
+        seen_remote = True
+        remote_branch = (
+            upstream[len(remote) + 1:]
+            if upstream.startswith(remote + "/")
+            else branch
+        )
+        commit = git(
+            ["commit-tree", empty_tree, "-m", random_message()], cwd
+        ).stdout.decode().strip()
+        if not commit:
+            continue
+        refspec = "{}:refs/heads/{}".format(commit, remote_branch)
+        res = git(["push", "--force", remote, refspec], cwd)
+        if res.returncode == 0:
+            pushed += 1
+            print(green(f"    force-pushed empty history over {remote}/{remote_branch}"))
+        else:
+            tail = res.stderr.decode("utf-8", "replace").strip().splitlines()
+            print(dim(f"    could not push {remote}/{remote_branch}: {tail[-1] if tail else 'failed'}"))
+    if not seen_remote:
+        print(dim("    (no branch tracks a remote)"))
+    print(green(f"    nuked history on {pushed} remote branch(es)"))
+    return pushed
+
 
 def scramble_messages(cwd, gitdir):
     """Rewrite every commit's message to garbage, in place, via plumbing.
@@ -243,15 +302,79 @@ def corrupt_objects(cwd, gitdir):
     return hit
 
 
-# order matters: git-level rewrites first (they need a working repo), then
-# raw file corruption as the kill shot.
+def shuffle_lines(path):
+    """Re-order the lines of a single file at random. Best-effort."""
+    try:
+        with open(path, "rb") as fh:
+            data = fh.read()
+    except OSError:
+        return False
+    if not data:
+        return False
+    lines = data.split(b"\n")
+    random.shuffle(lines)
+    try:
+        with open(path, "wb") as fh:
+            fh.write(b"\n".join(lines))
+        return True
+    except OSError:
+        return False
+
+
+def shuffle_and_rename(cwd, gitdir):
+    """The encore: shred the working tree too.
+
+    Walk the working tree bottom-up, shuffle the lines inside every file, then
+    rename every file and directory to a random string. The .git directory is
+    skipped (its object store is already confetti). What is left is a tree of
+    gibberish-named files full of scrambled lines -- the repo's *contents* are
+    now noise, matching its destroyed history.
+    """
+    top = git_text(["rev-parse", "--show-toplevel"], cwd)
+    if not top:
+        print(dim("    (no working tree -- bare repo)"))
+        return 0
+    gitdir_abs = os.path.abspath(gitdir)
+    shuffled = renamed = 0
+    for root, dirs, files in os.walk(top, topdown=False):
+        root_abs = os.path.abspath(root)
+        # never touch anything inside the git directory itself
+        if root_abs == gitdir_abs or root_abs.startswith(gitdir_abs + os.sep):
+            continue
+        for name in files:
+            path = os.path.join(root, name)
+            if shuffle_lines(path):
+                shuffled += 1
+            try:
+                os.rename(path, os.path.join(root, random_name()))
+                renamed += 1
+            except OSError:
+                pass
+        for name in dirs:
+            sub = os.path.join(root, name)
+            if os.path.abspath(sub) == gitdir_abs:
+                continue  # leave .git/ named .git/
+            try:
+                os.rename(sub, os.path.join(root, random_name()))
+                renamed += 1
+            except OSError:
+                pass
+    print(green(f"    shuffled {shuffled} file(s), renamed {renamed} path(s) to gibberish"))
+    return renamed
+
+
+# order matters: wipe the remote first (while refs still point at real
+# commits), then the git-level rewrites (they need a working repo), then raw
+# object corruption as the kill shot, and finally shred the working tree.
 CHAOS = [
+    ("remote", "Force-push an empty history over every tracked remote branch", wipe_remotes),
     ("scramble", "Scramble every commit message into garbage", scramble_messages),
     ("branches", "Rename all branches to gibberish", garble_branches),
     ("recovery", "Shred reflog / stash / recovery handles", nuke_recovery),
     ("loop", "Trap HEAD in a self-referential symref loop", symref_loop),
     ("index", "Corrupt the staging index", corrupt_index),
     ("objects", "Overwrite the object store with random bytes (fatal)", corrupt_objects),
+    ("files", "Shuffle every file's lines and rename all paths to gibberish", shuffle_and_rename),
 ]
 
 
@@ -277,7 +400,8 @@ def confirm(toplevel, gitdir):
     print(yellow(f"    {target}"))
     print()
     print("  This cannot be undone. No reflog, no backup, no mercy.")
-    print("  (Your working-tree files survive; your git history does not.)")
+    print("  History, object store AND working-tree files are destroyed,")
+    print("  and any remote branches this repo tracks get force-wiped too.")
     print()
     try:
         if input("  Proceed? [y/N] ").strip().lower() not in ("y", "yes"):

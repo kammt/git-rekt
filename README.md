@@ -5,13 +5,15 @@ repository you run it in**. For laughs, for pranks on your own machines, for
 that one repo you swore you'd never look at again.
 
 > ⚠️ **This is a joke tool that does real, permanent damage.** There is no undo.
-> It nukes the reflog and overwrites the object store with random bytes. Point
-> it only at repositories you are happy to lose. Your working-tree *files* are
-> left alone — only the git history/plumbing is destroyed.
+> It nukes the reflog, overwrites the object store with random bytes, and then
+> shuffles and renames your working-tree files into gibberish. As its very
+> first act it also **force-pushes an empty history over any remote branches
+> this repo tracks** — so the destruction is not even confined to your machine.
+> Point it only at repositories (and remotes) you are happy to lose.
 
-It does **not** touch remotes, does **not** phone home, and is loud about
-everything it does. It only ever affects the repo in the current directory, and
-it asks for explicit confirmation first.
+It does **not** phone home and is loud about everything it does. Apart from the
+force-push over its own tracked remotes, it only affects the repo in the
+current directory, and it asks for explicit confirmation first.
 
 ## What it does
 
@@ -19,14 +21,17 @@ Every step always runs, in this order, each one best-effort:
 
 | step       | effect |
 |------------|--------|
+| `remote`   | **First, off-machine:** for every branch that tracks a remote, force-pushes a single empty commit over the remote branch, removing all of its commits from the remote. |
 | `scramble` | Rewrites every commit message to random garbage (real history, clown wig). |
 | `branches` | Renames all branches to nonsense. |
 | `recovery` | Expires the reflog, clears stashes, deletes `logs/`, `ORIG_HEAD`, etc. — kills the safety nets. |
 | `loop`     | Points `HEAD` into a self-referential symbolic-ref cycle so `checkout`/`switch`/`status` hard-fail. |
 | `index`    | Overwrites the staging index with random bytes. |
 | `objects`  | **The kill shot:** overwrites every loose object and packfile with random bytes. git can no longer read a single object. |
+| `files`    | **The encore:** re-orders the lines within every working-tree file at random, then renames every file and directory to a random string (`.git/` excepted). |
 
-Afterwards, essentially every git command returns `fatal:`.
+Afterwards, essentially every git command returns `fatal:`, and the working
+tree is a pile of gibberish-named files full of shuffled lines.
 
 ## Install
 
